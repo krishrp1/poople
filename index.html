@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poople</title>
+<meta name="description" content="A word ladder game: change one letter at a time to reach POOP.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💩%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #2b1a10;
+    --panel: #4a2c1a;
+    --border: #6b4328;
+    --tile-text: #fff3e0;
+    --accent: #d9a066;
+    --changed: #b5651d;
+    --same: #3b2415;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100dvh; background: var(--bg); color: var(--tile-text);
+    font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center;
+    padding: 12px 8px; overflow: hidden; user-select: none;
+  }
+  header { text-align: center; width: 100%; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h1 { margin: 0; letter-spacing: .3em; color: var(--accent); font-size: 1.8rem; }
+  .sub { margin: 2px 0 0; font-size: .85rem; opacity: .7; }
+  .moves { margin: 10px 0 4px; color: var(--accent); font-weight: 600; }
+
+  #board { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; scrollbar-width: none; }
+  #board::-webkit-scrollbar { display: none; }
+  .row { display: flex; gap: 6px; margin-bottom: 6px; justify-content: center; }
+  .tile {
+    width: 58px; height: 58px; display: grid; place-items: center; border: 2px solid var(--border);
+    font-size: 2rem; font-weight: 700; text-transform: uppercase;
+  }
+  .tile.filled { border-color: var(--accent); animation: pop .1s ease-out; }
+  .tile.miss { background: var(--same); border-color: var(--same); }
+  .tile.correct { background: var(--changed); border-color: var(--changed); }
+  .tile.flip { animation: flip .6s ease-in-out both; animation-delay: calc(var(--i) * .25s); }
+  .tile.bounce { animation: bounce .9s ease both; animation-delay: calc(var(--i) * .1s); }
+  .row.invalid { animation: nope .5s; }
+  @keyframes pop { 50% { transform: scale(1.12); } }
+  @keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+  @keyframes bounce { 0%, 20% { transform: translateY(0); } 40% { transform: translateY(-24px); } 50% { transform: translateY(4px); } 60% { transform: translateY(-10px); } 80%, 100% { transform: translateY(0); } }
+  @keyframes nope { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); } }
+
+  #toast {
+    position: fixed; top: 90px; left: 50%; transform: translateX(-50%); background: var(--tile-text); color: var(--bg);
+    padding: 10px 16px; border-radius: 6px; font-weight: 700; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 40;
+  }
+  #toast.show { opacity: 1; }
+
+  #kb { width: 100%; max-width: 500px; padding-top: 8px; }
+  .krow { display: flex; gap: 6px; justify-content: center; margin-bottom: 6px; }
+  .key {
+    flex: 1; height: 52px; border: 0; border-radius: 6px; background: var(--border); color: var(--tile-text);
+    font-weight: 700; font-size: .95rem; text-transform: uppercase; cursor: pointer; padding: 0;
+  }
+  .key.wide { flex: 1.6; font-size: .75rem; }
+  .key:active { background: var(--changed); }
+
+  #again {
+    display: none; margin: 8px 0; padding: 12px 24px; font-size: 1rem; font-weight: 700; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--bg); cursor: pointer; position: relative; z-index: 30;
+  }
+
+  /* nuke */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 20; overflow: hidden; }
+  .flash { position: absolute; inset: 0; background: #fff; animation: flash 1.6s ease-out forwards; }
+  @keyframes flash { to { opacity: 0; } }
+  .shock {
+    position: absolute; left: 50%; bottom: 10%; width: 20px; height: 20px; border-radius: 50%;
+    border: 6px solid var(--accent); transform: translate(-50%, 50%); animation: shock 1.6s ease-out forwards;
+  }
+  @keyframes shock { to { width: 220vmax; height: 220vmax; opacity: 0; } }
+  .cloud { position: absolute; left: 50%; bottom: 5%; width: 0; height: 0; animation: rise 3s ease-out forwards; }
+  .cloud .stem { position: absolute; left: -35px; bottom: 0; width: 70px; height: 200px; border-radius: 30px; background: linear-gradient(#8d5524, #3e2210); }
+  .cloud .cap {
+    position: absolute; left: -130px; bottom: 140px; width: 260px; height: 150px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #ffb74d, #8d5524 55%, #3e2210); box-shadow: 0 0 60px 20px rgba(255, 140, 0, .6);
+  }
+  @keyframes rise { 0% { transform: scale(.1); opacity: 1; } 60% { transform: scale(1.4); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+  .poo { position: absolute; top: -60px; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(var(--spin)); } }
+  body.shake { animation: quake .5s 3; }
+  @keyframes quake { 25% { transform: translate(6px, -4px); } 50% { transform: translate(-6px, 4px); } 75% { transform: translate(4px, 6px); } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>POOPLE</h1>
+    <p class="sub">Change one letter at a time. Make it to POOP.</p>
+  </header>
+  <div class="moves">Moves: <span id="count">0</span></div>
+  <div id="board"></div>
+  <button id="again">Play again</button>
+  <div id="kb"></div>
+  <div id="toast" role="status"></div>
+  <div id="fx"></div>
+
+<script src="words.js"></script>
+<script>
+const TARGET = "poop";
+const dict = new Set(WORDS);
+const $ = id => document.getElementById(id);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let chain, typed, active, locked;
+
+function makeRow(word = "", cls = false) {
+  const r = document.createElement("div");
+  r.className = "row";
+  for (let i = 0; i < 4; i++) {
+    const t = document.createElement("div");
+    t.className = "tile" + (cls && word[i] ? (word[i] === TARGET[i] ? " correct" : " miss") : "");
+    t.style.setProperty("--i", i);
+    t.textContent = word[i] || "";
+    r.append(t);
+  }
+  $("board").append(r);
+  r.scrollIntoView({ block: "end" });
+  return r;
+}
+
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toast.id);
+  toast.id = setTimeout(() => t.classList.remove("show"), 1400);
+}
+
+function start() {
+  chain = [START_WORDS[Math.floor(Math.random() * START_WORDS.length)]];
+  typed = "";
+  locked = false;
+  $("board").replaceChildren();
+  $("fx").replaceChildren();
+  $("again").style.display = "none";
+  $("count").textContent = 0;
+  makeRow(chain[0], true);
+  active = makeRow();
+}
+
+function type(ch) {
+  if (locked || typed.length >= 4) return;
+  const tile = active.children[typed.length];
+  tile.textContent = ch;
+  tile.classList.add("filled");
+  typed += ch;
+}
+
+function erase() {
+  if (locked || !typed.length) return;
+  typed = typed.slice(0, -1);
+  const tile = active.children[typed.length];
+  tile.textContent = "";
+  tile.classList.remove("filled");
+}
+
+function reject(text) {
+  toast(text);
+  active.classList.remove("invalid");
+  void active.offsetWidth;
+  active.classList.add("invalid");
+}
+
+async function submit() {
+  if (locked) return;
+  const cur = chain[chain.length - 1];
+  if (typed.length < 4) return reject("Not enough letters");
+  if ([...typed].filter((c, i) => c !== cur[i]).length !== 1) return reject("Change exactly one letter");
+  if (!dict.has(typed)) return reject("Not in word list");
+
+  locked = true;
+  const row = active, word = typed;
+  [...row.children].forEach((tile, i) => {
+    tile.classList.add("flip");
+    setTimeout(() => {
+      tile.classList.remove("filled");
+      tile.classList.add(word[i] === TARGET[i] ? "correct" : "miss");
+    }, i * 250 + 300);
+  });
+  await wait(3 * 250 + 600);
+
+  chain.push(word);
+  $("count").textContent = chain.length - 1;
+  if (word === TARGET) return win(row);
+  typed = "";
+  active = makeRow();
+  locked = false;
+}
+
+async function win(row) {
+  [...row.children].forEach(t => { t.classList.remove("flip"); t.classList.add("bounce"); });
+  await wait(1000);
+  const fx = $("fx");
+  fx.insertAdjacentHTML("beforeend",
+    '<div class="flash"></div><div class="shock"></div><div class="cloud"><div class="stem"></div><div class="cap"></div></div>');
+  document.body.classList.add("shake");
+  setTimeout(() => document.body.classList.remove("shake"), 1500);
+  setTimeout(() => shower(fx), 900);
+  $("again").style.display = "block";
+}
+
+function shower(fx) {
+  for (let i = 0; i < 150; i++) {
+    const p = document.createElement("span");
+    p.className = "poo";
+    p.textContent = "💩";
+    p.style.left = Math.random() * 100 + "vw";
+    p.style.fontSize = 20 + Math.random() * 40 + "px";
+    p.style.animationDuration = 2 + Math.random() * 3 + "s";
+    p.style.animationDelay = Math.random() * 3 + "s";
+    p.style.setProperty("--spin", (Math.random() * 720 - 360) + "deg");
+    fx.append(p);
+  }
+}
+
+function handle(key) {
+  if (key === "Enter") submit();
+  else if (key === "Backspace") erase();
+  else if (/^[a-z]$/i.test(key)) type(key.toLowerCase());
+}
+
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  handle(e.key);
+});
+
+["qwertyuiop", "asdfghjkl", "+zxcvbnm-"].forEach(letters => {
+  const r = document.createElement("div");
+  r.className = "krow";
+  [...letters].forEach(k => {
+    const b = document.createElement("button");
+    b.className = "key" + (k === "+" || k === "-" ? " wide" : "");
+    b.textContent = k === "+" ? "enter" : k === "-" ? "⌫" : k;
+    b.addEventListener("click", () => handle(k === "+" ? "Enter" : k === "-" ? "Backspace" : k));
+    r.append(b);
+  });
+  $("kb").append(r);
+});
+
+$("again").addEventListener("click", start);
+start();
+</script>
+</body>
+</html>

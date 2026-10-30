@@ -47,6 +47,22 @@ function dailyWord() {
   return order[day % order.length];
 }
 
+const LAUNCH_DAY = Math.floor(Date.UTC(2026, 9, 30) / 864e5);
+
+function shareText() {
+  const grid = chain.map(w => [...w].map((c, i) => (c === TARGET[i] ? "🟫" : "⬛")).join("")).join("\n");
+  return `Poople #${day - LAUNCH_DAY + 1} - ${chain.length - 1} moves\n${grid}\n${location.origin}`;
+}
+
+async function share() {
+  try {
+    await navigator.clipboard.writeText(shareText());
+    toast("Copied to clipboard");
+  } catch {
+    toast("Couldn't copy");
+  }
+}
+
 function save() {
   try { localStorage.setItem(saveKey, JSON.stringify(chain)); } catch {}
 }
@@ -168,4 +184,5 @@ document.addEventListener("keydown", e => {
   $("kb").append(r);
 });
 
+$("share").addEventListener("click", share);
 start();

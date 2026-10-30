@@ -51,7 +51,12 @@
   .key.wide { flex: 1.6; font-size: .75rem; }
   .key:active { background: var(--changed); }
 
-  #done { display: none; margin: 8px 0; font-weight: 700; color: var(--accent); position: relative; z-index: 30; }
+  #done { display: none; margin: 8px 0; font-weight: 700; color: var(--accent); position: relative; z-index: 30; text-align: center; }
+  #done p { margin: 0 0 8px; }
+  #share {
+    padding: 12px 24px; font-size: 1rem; font-weight: 700; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--bg); cursor: pointer;
+  }
 
   /* nuke */
   #fx { position: fixed; inset: 0; pointer-events: none; z-index: 20; overflow: hidden; }

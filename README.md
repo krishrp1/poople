@@ -24,12 +24,12 @@ npx serve .
 
 ## Files
 
-- `index.html` has the game: markup, styles and logic.
+- `index.html`, `style.css` and `app.js` are the game: markup, styles and logic.
 - `words.js` has the dictionary (`WORDS`) and the pool of daily start words (`START_WORDS`). Every start word can reach POOP in at least 3 steps.
 
 ## Deploy
 
-Hosted on Vercel as a static site, with zero config.
+Hosted on Vercel as a static site. `vercel.json` sets a strict Content Security Policy and other security headers, so scripts and styles live in `app.js` and `style.css` (no inline code).
 
 ```
 vercel --prod
